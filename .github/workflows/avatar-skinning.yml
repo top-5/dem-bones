@@ -45,3 +45,4 @@ jobs:
           cmake --build .build/avatar-skinning-wasm --config Release
           test -s .build/avatar-skinning-wasm/dem-bones.js
           test -s .build/avatar-skinning-wasm/dem-bones.wasm
+          node examples/avatar-skinning/wasm/synthetic-smoke.mjs "$PWD/.build/avatar-skinning-wasm/dem-bones.js"

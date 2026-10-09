@@ -13,6 +13,7 @@ Implemented baseline:
 ```sh
 emcmake cmake -S examples/avatar-skinning/wasm -B .build/avatar-skinning-wasm
 cmake --build .build/avatar-skinning-wasm --config Release
+node examples/avatar-skinning/wasm/synthetic-smoke.mjs "$PWD/.build/avatar-skinning-wasm/dem-bones.js"
 ```
 
 The native and WASM implementations must consume the same row-major array
@@ -23,3 +24,7 @@ Cancellation removes queued work and suppresses the result of in-flight work.
 The current Dem Bones API has no iteration callback, so an in-flight solve is not
 preemptible. SIMD and pthread builds remain separate follow-ups; pthreads require
 cross-origin isolation and must not be an accidental runtime dependency.
+
+CI executes the compiled scalar module under Node against the same locked-transform
+two-frame recovery problem as the native test. `node` is included only as a test
+host; the emitted ES module also supports browsers and dedicated workers.
