@@ -17,5 +17,5 @@ target_compile_options(dem-bones-wasm PRIVATE -O3 -fexceptions)
 target_link_options(dem-bones-wasm PRIVATE -O3 -sMODULARIZE=1 -sEXPORT_ES6=1 -sALLOW_MEMORY_GROWTH=1
   "-sENVIRONMENT=web,worker,node" -sFILESYSTEM=0
   "-sEXPORTED_FUNCTIONS=['_malloc','_free','_dem_solve_weights','_dem_last_error']"
-  "-sEXPORTED_RUNTIME_METHODS=['UTF8ToString','HEAPF64']")
+  "-sEXPORTED_RUNTIME_METHODS=['UTF8ToString','HEAPF64','HEAPU32']")
 set_target_properties(dem-bones-wasm PROPERTIES OUTPUT_NAME "dem-bones" SUFFIX ".js")

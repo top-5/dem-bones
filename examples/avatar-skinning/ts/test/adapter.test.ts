@@ -5,8 +5,9 @@ import { WeightSolverWorkerRuntime } from "../src/worker-runtime.ts";
 import type { WeightSolveInput, WeightSolverBackend } from "../src/types.ts";
 
 function input(): WeightSolveInput {
-  return { vertexCount: 2, frameCount: 1, boneCount: 2, restPositions: new Float64Array(6),
-    targetPositions: new Float64Array(6), transforms: new Float64Array(32) };
+  return { vertexCount: 3, frameCount: 1, boneCount: 2, restPositions: new Float64Array(9),
+    triangleIndices: new Uint32Array([0, 1, 2]),
+    targetPositions: new Float64Array(9), transforms: new Float64Array(32) };
 }
 
 test("Emscripten adapter copies output and frees every allocation", () => {
@@ -15,13 +16,14 @@ test("Emscripten adapter copies output and frees every allocation", () => {
   const freed: number[] = [];
   const module: DemBonesEmscriptenModule = {
     HEAPF64: heap,
+    HEAPU32: new Uint32Array(heap.buffer),
     _malloc(bytes) { const pointer = cursor; cursor += bytes; return pointer; },
     _free(pointer) { freed.push(pointer); },
-    _dem_solve_weights(_r, _t, _m, output) { heap.set([1, 0, .25, .75], output / 8); return 0; },
+    _dem_solve_weights(_r, _f, _t, _m, output) { heap.set([1, 0, .25, .75, .5, .5], output / 8); return 0; },
   };
   const result = new EmscriptenWeightSolver(module).solveWeights(input());
-  assert.deepEqual([...result.weights], [1, 0, .25, .75]);
-  assert.equal(freed.length, 4);
+  assert.deepEqual([...result.weights], [1, 0, .25, .75, .5, .5]);
+  assert.equal(freed.length, 5);
 });
 
 test("worker queue promotes hover over queued background work", async () => {
@@ -35,7 +37,8 @@ test("worker queue promotes hover over queued background work", async () => {
     if (message.kind === "solved") outputs.push(message.result.weights[0]);
   });
   const make = (value: number): WeightSolveInput => ({ vertexCount: 1, frameCount: 1, boneCount: 1,
-    restPositions: new Float64Array([value, 0, 0]), targetPositions: new Float64Array(3), transforms: new Float64Array(16) });
+    restPositions: new Float64Array([value, 0, 0, value, 1, 0, value, 0, 1]),
+    triangleIndices: new Uint32Array([0, 1, 2]), targetPositions: new Float64Array(9), transforms: new Float64Array(16) });
   runtime.accept({ kind: "solve", id: 1, priority: "background", input: make(1) });
   runtime.accept({ kind: "solve", id: 2, priority: "background", input: make(2) });
   runtime.accept({ kind: "solve", id: 3, priority: "hover", input: make(3) });

@@ -9,12 +9,13 @@ extern "C" {
 const char* dem_last_error() { return last_error.c_str(); }
 
 // All arrays are row-major. Output is vertex-major, then bone.
-int dem_solve_weights(const double* rest, const double* targets, const double* transforms,
-                      double* output, int vertex_count, int frame_count, int bone_count,
+int dem_solve_weights(const double* rest, const unsigned int* faces, const double* targets,
+                      const double* transforms, double* output, int vertex_count, int face_count,
+                      int frame_count, int bone_count,
                       int max_influences, int iterations, double smoothness) {
   try {
-    if (!rest || !targets || !transforms || !output) throw std::invalid_argument("null array pointer");
-    if (vertex_count <= 0 || frame_count <= 0 || bone_count <= 0) throw std::invalid_argument("counts must be positive");
+    if (!rest || !faces || !targets || !transforms || !output) throw std::invalid_argument("null array pointer");
+    if (vertex_count <= 0 || face_count <= 0 || frame_count <= 0 || bone_count <= 0) throw std::invalid_argument("counts must be positive");
     if (max_influences <= 0 || max_influences > bone_count) throw std::invalid_argument("invalid max influences");
     if (iterations <= 0 || smoothness < 0) throw std::invalid_argument("invalid solver configuration");
     using Solver = Dem::DemBones<double, double>;
@@ -28,6 +29,13 @@ int dem_solve_weights(const double* rest, const double* targets, const double* t
     solver.u.resize(3, vertex_count);
     for (int vertex = 0; vertex < vertex_count; ++vertex)
       for (int axis = 0; axis < 3; ++axis) solver.u(axis, vertex) = rest[vertex * 3 + axis];
+    solver.fv.resize(face_count);
+    for (int face = 0; face < face_count; ++face) {
+      solver.fv[face] = {static_cast<int>(faces[face * 3]), static_cast<int>(faces[face * 3 + 1]),
+                         static_cast<int>(faces[face * 3 + 2])};
+      for (int corner : solver.fv[face])
+        if (corner < 0 || corner >= vertex_count) throw std::invalid_argument("face index outside vertex table");
+    }
     solver.v.resize(frame_count * 3, vertex_count);
     for (int frame = 0; frame < frame_count; ++frame)
       for (int vertex = 0; vertex < vertex_count; ++vertex)

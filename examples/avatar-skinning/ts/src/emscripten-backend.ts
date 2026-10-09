@@ -2,10 +2,11 @@ import { validateWeightSolveInput, type WeightSolveInput, type WeightSolveResult
 
 export interface DemBonesEmscriptenModule {
   HEAPF64: Float64Array;
+  HEAPU32: Uint32Array;
   _malloc(bytes: number): number;
   _free(pointer: number): void;
-  _dem_solve_weights(rest: number, targets: number, transforms: number, output: number,
-    vertexCount: number, frameCount: number, boneCount: number, maxInfluences: number,
+  _dem_solve_weights(rest: number, faces: number, targets: number, transforms: number, output: number,
+    vertexCount: number, faceCount: number, frameCount: number, boneCount: number, maxInfluences: number,
     iterations: number, smoothness: number): number;
   UTF8ToString?(pointer: number): string;
   _dem_last_error?(): number;
@@ -20,7 +21,7 @@ export class EmscriptenWeightSolver implements WeightSolverBackend {
     validateWeightSolveInput(input);
     const module = this.module;
     const allocations: number[] = [];
-    const alloc = (sourceOrLength: Float64Array | number): number => {
+    const allocF64 = (sourceOrLength: Float64Array | number): number => {
       const length = typeof sourceOrLength === "number" ? sourceOrLength : sourceOrLength.length;
       const pointer = module._malloc(length * Float64Array.BYTES_PER_ELEMENT);
       if (!pointer) throw new Error(`WASM allocation failed for ${length} doubles`);
@@ -28,15 +29,21 @@ export class EmscriptenWeightSolver implements WeightSolverBackend {
       if (sourceOrLength instanceof Float64Array) module.HEAPF64.set(sourceOrLength, pointer / 8);
       return pointer;
     };
+    const allocU32 = (source: Uint32Array): number => {
+      const pointer = module._malloc(source.byteLength);
+      if (!pointer) throw new Error(`WASM allocation failed for ${source.length} uint32 values`);
+      allocations.push(pointer); module.HEAPU32.set(source, pointer / 4); return pointer;
+    };
     const started = performance.now();
     try {
-      const rest = alloc(input.restPositions);
-      const targets = alloc(input.targetPositions);
-      const transforms = alloc(input.transforms);
+      const rest = allocF64(input.restPositions);
+      const faces = allocU32(input.triangleIndices);
+      const targets = allocF64(input.targetPositions);
+      const transforms = allocF64(input.transforms);
       const outputLength = input.vertexCount * input.boneCount;
-      const output = alloc(outputLength);
-      const status = module._dem_solve_weights(rest, targets, transforms, output,
-        input.vertexCount, input.frameCount, input.boneCount,
+      const output = allocF64(outputLength);
+      const status = module._dem_solve_weights(rest, faces, targets, transforms, output,
+        input.vertexCount, input.triangleIndices.length / 3, input.frameCount, input.boneCount,
         input.maxInfluences ?? Math.min(4, input.boneCount), input.iterations ?? 20, input.smoothness ?? 0);
       if (status !== 0) {
         const errorPointer = module._dem_last_error?.() ?? 0;

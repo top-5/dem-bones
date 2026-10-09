@@ -1,5 +1,6 @@
 export interface WeightSolveInput {
   restPositions: Float64Array;
+  triangleIndices: Uint32Array;
   targetPositions: Float64Array;
   transforms: Float64Array;
   vertexCount: number;
@@ -30,6 +31,10 @@ export function validateWeightSolveInput(input: WeightSolveInput): void {
     if (actual !== wanted) throw new RangeError(`${name} has ${actual} values; expected ${wanted}`);
   };
   expect("restPositions", input.restPositions.length, input.vertexCount * 3);
+  if (input.triangleIndices.length === 0 || input.triangleIndices.length % 3 !== 0)
+    throw new RangeError("triangleIndices must contain one or more triangles");
+  if (input.triangleIndices.some(index => index >= input.vertexCount))
+    throw new RangeError("triangle index outside vertex table");
   expect("targetPositions", input.targetPositions.length, input.frameCount * input.vertexCount * 3);
   expect("transforms", input.transforms.length, input.frameCount * input.boneCount * 16);
   if (input.maxInfluences !== undefined && (!Number.isSafeInteger(input.maxInfluences) || input.maxInfluences < 1 || input.maxInfluences > input.boneCount))
