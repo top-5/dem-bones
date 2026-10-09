@@ -24,6 +24,15 @@ class DeformInput:
     transforms: torch.Tensor  # [B|1, J, 4, 4]
 
 
+@dataclass(frozen=True)
+class WeightSolveOptions:
+    steps: int = 400
+    learning_rate: float = 0.08
+    smoothness: float = 0.0
+    entropy: float = 0.0
+    frozen_weight: float = 0.0
+
+
 def _broadcast_batch(value: torch.Tensor, batch: int) -> torch.Tensor:
     if value.shape[0] == batch:
         return value
@@ -115,11 +124,19 @@ def recover_weights(
     method: Method = "dqs",
     steps: int = 400,
     learning_rate: float = 0.08,
+    edges: torch.Tensor | None = None,
+    smoothness: float = 0.0,
+    entropy: float = 0.0,
+    frozen_weights: torch.Tensor | None = None,
+    frozen_mask: torch.Tensor | None = None,
+    frozen_weight: float = 0.0,
 ) -> torch.Tensor:
     """Small differentiable baseline, not a replacement for Dem Bones.
 
     It solves only weights for a fixed candidate-joint set and fixed transforms.
-    Production work needs spatial smoothing, sparsity and collision/strain losses.
+    Dem Bones remains the production sparse solver. This differentiable refinement
+    adds optional neighbourhood continuity and anchor preservation so Seed can use
+    the same array contract for folds/collision objectives.
     """
     batch, vertex_count, influence_count = targets.shape[0], vertices.shape[1], joints.shape[2]
     logits = torch.zeros((1, vertex_count, influence_count), dtype=vertices.dtype,
@@ -130,7 +147,19 @@ def recover_weights(
         weights = torch.softmax(logits, dim=-1)
         prediction = deform(DeformInput(vertices, weights, joints, transforms), method)
         loss = torch.mean((prediction - targets) ** 2)
+        if edges is not None and smoothness > 0:
+            edge_weights = weights[0, edges.long()]
+            loss = loss + smoothness * torch.mean((edge_weights[:, 0] - edge_weights[:, 1]) ** 2)
+        if entropy > 0:
+            loss = loss + entropy * torch.mean(
+                -torch.sum(weights * torch.log(weights.clamp_min(1e-12)), dim=-1)
+            )
+        if frozen_weights is not None and frozen_mask is not None and frozen_weight > 0:
+            mask = frozen_mask.to(dtype=torch.bool, device=weights.device)
+            if torch.any(mask):
+                loss = loss + frozen_weight * torch.mean(
+                    (weights[:, mask] - frozen_weights[:, mask]) ** 2
+                )
         loss.backward()
         optimizer.step()
     return torch.softmax(logits.detach(), dim=-1)
-

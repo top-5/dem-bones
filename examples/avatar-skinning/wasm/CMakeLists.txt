@@ -1,0 +1,21 @@
+cmake_minimum_required(VERSION 3.20)
+project(dem_bones_wasm LANGUAGES CXX)
+if(NOT EMSCRIPTEN)
+  message(FATAL_ERROR "Configure with emcmake cmake -S . -B build")
+endif()
+include(FetchContent)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(EIGEN_BUILD_DOC OFF CACHE BOOL "" FORCE)
+set(EIGEN_BUILD_PKGCONFIG OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(eigen GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git GIT_TAG 3.4.0 GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(eigen)
+add_executable(dem-bones-wasm bindings.cpp)
+target_compile_features(dem-bones-wasm PRIVATE cxx_std_17)
+target_include_directories(dem-bones-wasm PRIVATE ../../../include)
+target_link_libraries(dem-bones-wasm PRIVATE Eigen3::Eigen)
+target_compile_options(dem-bones-wasm PRIVATE -O3 -fexceptions)
+target_link_options(dem-bones-wasm PRIVATE -O3 -sMODULARIZE=1 -sEXPORT_ES6=1 -sALLOW_MEMORY_GROWTH=1
+  "-sENVIRONMENT=web,worker" -sFILESYSTEM=0
+  "-sEXPORTED_FUNCTIONS=['_malloc','_free','_dem_solve_weights','_dem_last_error']"
+  "-sEXPORTED_RUNTIME_METHODS=['UTF8ToString']")
+set_target_properties(dem-bones-wasm PROPERTIES OUTPUT_NAME "dem-bones" SUFFIX ".js")

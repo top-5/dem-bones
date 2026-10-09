@@ -36,6 +36,24 @@ def main() -> None:
         assert torch.allclose(recovered.sum(dim=-1), torch.ones_like(recovered[..., 0]), atol=1e-10)
         print(f"{method}: max replay error={error:.6g}; recovered={recovered.tolist()}")
 
+    target = deform(DeformInput(vertices, truth, joints, motion), "lbs")
+    anchored = recover_weights(
+        vertices,
+        joints,
+        motion,
+        target,
+        method="lbs",
+        edges=torch.tensor([[0, 1]]),
+        smoothness=1e-4,
+        entropy=1e-6,
+        frozen_weights=truth,
+        frozen_mask=torch.tensor([True, False]),
+        frozen_weight=10.0,
+    )
+    assert torch.max(torch.abs(anchored[:, 0] - truth[:, 0])).item() < 2e-3
+    assert torch.isfinite(anchored).all()
+    print("weight refinement: smoothing and frozen-anchor checks passed")
+
     identity = torch.eye(4, dtype=torch.float64).reshape(1, 1, 4, 4)
     one_joint = torch.zeros((1, 2, 1), dtype=torch.long)
     one_weight = torch.ones((1, 2, 1), dtype=torch.float64, requires_grad=True)
@@ -48,4 +66,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

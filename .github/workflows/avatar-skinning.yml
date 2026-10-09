@@ -1,0 +1,47 @@
+name: Avatar skinning prototype
+
+on:
+  push:
+    paths:
+      - "examples/avatar-skinning/**"
+      - ".github/workflows/avatar-skinning.yml"
+  pull_request:
+    paths:
+      - "examples/avatar-skinning/**"
+      - ".github/workflows/avatar-skinning.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: astral-sh/setup-uv@v6
+      - name: TypeScript worker and adapter tests
+        working-directory: examples/avatar-skinning/ts
+        run: npm test
+      - name: Python deformation tests
+        run: uv run --with torch --with roma python examples/avatar-skinning/python/test_avatar_skinning.py
+      - name: Python topology tests
+        run: uv run --with numpy python examples/avatar-skinning/python/test_topology_contract.py
+      - name: Native Dem Bones test
+        run: |
+          cmake -S examples/avatar-skinning/native -B .build/avatar-skinning-native
+          cmake --build .build/avatar-skinning-native --config Release
+          ./.build/avatar-skinning-native/dem_bones_avatar_smoke
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: "5.0.1"
+      - name: Build scalar ES module
+        run: |
+          emcmake cmake -S examples/avatar-skinning/wasm -B .build/avatar-skinning-wasm
+          cmake --build .build/avatar-skinning-wasm --config Release
+          test -s .build/avatar-skinning-wasm/dem-bones.js
+          test -s .build/avatar-skinning-wasm/dem-bones.wasm

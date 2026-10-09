@@ -91,3 +91,14 @@ deform(input: DeformInput): Float32Array
 
 Compile without OpenMP first. Run it in a Web Worker. Add pthread/SIMD builds only
 after deterministic scalar tests pass.
+
+The TypeScript client, priority worker queue, Emscripten heap adapter, and C ABI
+live in `ts/` and `wasm/`. Their interface tests do not require emsdk:
+
+```powershell
+cd examples/avatar-skinning/ts
+npm test
+```
+
+The deterministic surface/solver boundary and its validation gates are specified
+in [`PREDICTABLE_WATERTIGHT_CONTRACT.md`](PREDICTABLE_WATERTIGHT_CONTRACT.md).
