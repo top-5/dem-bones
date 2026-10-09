@@ -127,7 +127,8 @@ def main() -> None:
     rendered = json.dumps(report, indent=2)
     print(rendered)
     if args.report:
-        args.report.write_text(rendered + "\n", encoding="utf-8")
+        with args.report.open("w", encoding="utf-8", newline="\n") as stream:
+            stream.write(rendered + "\n")
 
 
 if __name__ == "__main__":
