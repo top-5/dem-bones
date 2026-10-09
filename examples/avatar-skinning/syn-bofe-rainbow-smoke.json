@@ -1,0 +1,27 @@
+{
+  "schema": "avatar-skinning-smoke/1",
+  "source": {
+    "name": "syn-bofe-9b6eb16-rainbow.glb",
+    "sha256": "0487afcb034b2b1b6a1feabc3312151dd4c4ea4bc7e6c976b7e14cd9cc84ea76",
+    "bytes": 8425772,
+    "provenance": "rainbow synthetic syn-bofe seed 9b6eb16; MadeHuman rig a64f59eb"
+  },
+  "mesh": {
+    "verticesTested": 50000,
+    "bones": 67,
+    "influences": 4
+  },
+  "stress": {
+    "boneIndex": 63,
+    "rotationDegrees": 90
+  },
+  "timingMs": {
+    "lbs": 7.047699997201562,
+    "dqs": 18.070299876853824
+  },
+  "dqsVsLbsMetres": {
+    "mean": 0.0024547050707042217,
+    "p95": 0.0033461912535130978,
+    "max": 0.18003010749816895
+  }
+}

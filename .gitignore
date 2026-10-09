@@ -1,4 +1,5 @@
 /build
+/.build
 /ExtLibs/*
 !/ExtLibs/Eigen
 !/ExtLibs/tclap
