@@ -5,7 +5,8 @@ export interface DemBonesEmscriptenModule {
   HEAPU32: Uint32Array;
   _malloc(bytes: number): number;
   _free(pointer: number): void;
-  _dem_solve_weights(rest: number, faces: number, targets: number, transforms: number, output: number,
+  _dem_solve_weights(rest: number, faces: number, targets: number, transforms: number, initialWeights: number,
+    lockWeights: number, output: number,
     vertexCount: number, faceCount: number, frameCount: number, boneCount: number, maxInfluences: number,
     iterations: number, smoothness: number): number;
   UTF8ToString?(pointer: number): string;
@@ -40,9 +41,11 @@ export class EmscriptenWeightSolver implements WeightSolverBackend {
       const faces = allocU32(input.triangleIndices);
       const targets = allocF64(input.targetPositions);
       const transforms = allocF64(input.transforms);
+      const initialWeights = input.initialWeights ? allocF64(input.initialWeights) : 0;
+      const lockWeights = input.lockWeights ? allocF64(input.lockWeights) : 0;
       const outputLength = input.vertexCount * input.boneCount;
       const output = allocF64(outputLength);
-      const status = module._dem_solve_weights(rest, faces, targets, transforms, output,
+      const status = module._dem_solve_weights(rest, faces, targets, transforms, initialWeights, lockWeights, output,
         input.vertexCount, input.triangleIndices.length / 3, input.frameCount, input.boneCount,
         input.maxInfluences ?? Math.min(4, input.boneCount), input.iterations ?? 20, input.smoothness ?? 0);
       if (status !== 0) {

@@ -6,6 +6,7 @@ export interface CancelRequest { kind: "cancel"; id: number; }
 export type WorkerRequest = SolveRequest | CancelRequest;
 export type WorkerResponse = { kind: "solved"; id: number; result: WeightSolveResult } | { kind: "failed"; id: number; error: string };
 export function inputTransferables(input: WeightSolveInput): Transferable[] {
-  return [input.restPositions.buffer, input.targetPositions.buffer, input.transforms.buffer]
+  return [input.restPositions.buffer, input.triangleIndices.buffer, input.targetPositions.buffer, input.transforms.buffer,
+    input.initialWeights?.buffer, input.lockWeights?.buffer]
     .filter((value): value is ArrayBuffer => value instanceof ArrayBuffer);
 }

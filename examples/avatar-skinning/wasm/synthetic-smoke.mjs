@@ -44,13 +44,15 @@ function allocateU32(source) {
   return pointer;
 }
 
-const pointers = [allocateF64(rest), allocateU32(faces), allocateF64(targets), allocateF64(transforms), allocateF64(vertices * bones)];
+const allocations = [allocateF64(rest), allocateU32(faces), allocateF64(targets), allocateF64(transforms), allocateF64(vertices * bones)];
+const [restPointer, facesPointer, targetsPointer, transformsPointer, outputPointer] = allocations;
 const started = performance.now();
-const status = module._dem_solve_weights(...pointers, vertices, faces.length / 3, frames, bones, 2, 20, 0);
+const status = module._dem_solve_weights(restPointer, facesPointer, targetsPointer, transformsPointer, 0, 0, outputPointer,
+  vertices, faces.length / 3, frames, bones, 2, 20, 0);
 const elapsed = performance.now() - started;
 try {
   if (status !== 0) throw new Error(module.UTF8ToString(module._dem_last_error()));
-  const weights = module.HEAPF64.slice(pointers[4] / 8, pointers[4] / 8 + vertices * bones);
+  const weights = module.HEAPF64.slice(outputPointer / 8, outputPointer / 8 + vertices * bones);
   let maxError = 0;
   for (let vertex = 0; vertex < vertices; vertex++) {
     maxError = Math.max(maxError, Math.abs(weights[vertex * bones + 1] - truth[vertex]));
@@ -60,5 +62,5 @@ try {
   }
   console.log(JSON.stringify({ backend: "wasm-scalar", solveMilliseconds: elapsed, maxWeightError: maxError, weights: [...weights] }));
 } finally {
-  for (const pointer of pointers.reverse()) module._free(pointer);
+  for (const pointer of allocations.reverse()) module._free(pointer);
 }

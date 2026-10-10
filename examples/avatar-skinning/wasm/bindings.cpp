@@ -1,4 +1,5 @@
 #include <DemBones/DemBones.h>
+#include <cmath>
 #include <exception>
 #include <stdexcept>
 #include <string>
@@ -10,7 +11,8 @@ const char* dem_last_error() { return last_error.c_str(); }
 
 // All arrays are row-major. Output is vertex-major, then bone.
 int dem_solve_weights(const double* rest, const unsigned int* faces, const double* targets,
-                      const double* transforms, double* output, int vertex_count, int face_count,
+                      const double* transforms, const double* initial_weights, const double* lock_weights,
+                      double* output, int vertex_count, int face_count,
                       int frame_count, int bone_count,
                       int max_influences, int iterations, double smoothness) {
   try {
@@ -26,6 +28,28 @@ int dem_solve_weights(const double* rest, const unsigned int* faces, const doubl
     solver.subjectID = Eigen::VectorXi::Zero(frame_count);
     solver.lockM = Eigen::VectorXi::Ones(bone_count);
     solver.lockW = Solver::VectorX::Zero(vertex_count);
+    if (lock_weights && !initial_weights) throw std::invalid_argument("lock weights require initial weights");
+    if (initial_weights) {
+      std::vector<Solver::Triplet, Eigen::aligned_allocator<Solver::Triplet>> weights;
+      weights.reserve(vertex_count * max_influences);
+      for (int vertex = 0; vertex < vertex_count; ++vertex) {
+        double sum = 0;
+        for (int bone = 0; bone < bone_count; ++bone) {
+          const double value = initial_weights[vertex * bone_count + bone];
+          if (!std::isfinite(value) || value < 0) throw std::invalid_argument("invalid initial weight");
+          sum += value;
+          if (value > 0) weights.emplace_back(bone, vertex, value);
+        }
+        if (sum <= 0) throw std::invalid_argument("initial weights contain an empty vertex");
+        if (lock_weights) {
+          const double value = lock_weights[vertex];
+          if (!std::isfinite(value) || value < 0 || value > 1) throw std::invalid_argument("invalid weight lock");
+          solver.lockW(vertex) = value;
+        }
+      }
+      solver.w.resize(bone_count, vertex_count);
+      solver.w.setFromTriplets(weights.begin(), weights.end());
+    }
     solver.u.resize(3, vertex_count);
     for (int vertex = 0; vertex < vertex_count; ++vertex)
       for (int axis = 0; axis < 3; ++axis) solver.u(axis, vertex) = rest[vertex * 3 + axis];
